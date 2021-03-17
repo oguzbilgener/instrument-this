@@ -25,12 +25,8 @@ coverage
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# Bower dependency directory (https://bower.io/)
-bower_components
-
+# Build output
+build/
 # node-waf configuration
 .lock-wscript
 
@@ -102,3 +98,5 @@ dist
 
 # TernJS port file
 .tern-port
+
+*.code-workspace

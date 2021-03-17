@@ -1,0 +1,6 @@
+version: "3"
+# TODO:
+# - otel collector
+# - jaeger all-in-one
+# - prometheus
+# - grafana
