@@ -1,3 +1,3 @@
-import { Instrument } from './decorator.js';
-
-export { Instrument };
+export { Instrument, InstrumentAsync } from './decorator.js';
+export { InstrumentConfig, GlobalConfig } from './config';
+export { initialize } from './initialize.js';

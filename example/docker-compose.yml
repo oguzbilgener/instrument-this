@@ -1,6 +1,71 @@
-version: "3"
-# TODO:
-# - otel collector
-# - jaeger all-in-one
-# - prometheus
-# - grafana
+version: "3.3"
+
+networks:
+  instrument-this:
+    driver: bridge
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+
+services:
+  otelcol:
+    image: otel/opentelemetry-collector:0.18.0
+    command: ["--config=/etc/otel-collector-config.yml", "--log-level=DEBUG"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "55680:55680"
+      - "55681:55681"
+    depends_on:
+      - jaeger
+    networks:
+      - instrument-this
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - 6831:6831/udp # UDP - thrift/compact
+      - 6832:6832/udp # UDP - thrift/binary
+      - 16686:16686 # HTTP - UI * API (/api/*)
+      - 16687:16687 # HTTP - health (/) and metrics (/metrics)
+      - 14268:14268 # HTTP - thift/binary
+      - 14250:14250 # gRPC - from
+    networks:
+      - instrument-this
+  prometheus:
+    image: prom/prometheus:v2.25.0
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    expose:
+      - 9090
+    networks:
+      - instrument-this
+    labels:
+      org.label-schema.group: "monitoring"
+  grafana:
+    image: grafana/grafana:7.4.2
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - instrument-this
+    labels:
+      org.label-schema.group: "monitoring"
