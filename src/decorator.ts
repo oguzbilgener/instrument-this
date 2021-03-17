@@ -1,17 +1,20 @@
 import { InstrumentConfig } from './config.js';
-import { GLOBAL_WRAPPED_KEY } from './globals.js';
+import { WRAPPED_KEY, DEFINITION_KEY } from './globals.js';
 import {
     executeWithContext,
     markFunctionStart,
     markFunctionException,
     markFunctionEnd,
+    DefinitionContext,
+    initializeDefinitionContext,
 } from './instrumentation.js';
 
 type AsyncFunction = (...args: any[]) => Promise<any>;
 type SyncFunction = (...args: any[]) => any;
 
 type DescriptorExtension = {
-    [GLOBAL_WRAPPED_KEY]?: boolean;
+    [WRAPPED_KEY]?: boolean;
+    [DEFINITION_KEY]?: DefinitionContext;
 };
 
 type AsyncFunctionDescriptor = TypedPropertyDescriptor<AsyncFunction> & DescriptorExtension;
@@ -31,16 +34,24 @@ function instrumentFunctionPriv(overrideConfig?: InstrumentConfig) {
             return;
         }
         // Avoid wrapping the function more than once
-        if (descriptor[GLOBAL_WRAPPED_KEY]) {
+        if (descriptor[WRAPPED_KEY]) {
             return;
         }
         if (isAsyncFunctionDescriptor(descriptor)) {
             return instrumentAsyncFunctionPriv(overrideConfig)(target, functionName, descriptor);
         }
         const unwrapped = descriptor.value;
+        // Initialize the metrics
+        const definitionContext = initializeDefinitionContext(functionName, overrideConfig);
+
+        descriptor[DEFINITION_KEY] = definitionContext;
+        // Wrap the method
         descriptor.value = function (...args: unknown[]) {
-            const context = markFunctionStart(functionName, overrideConfig);
-            const result: unknown = executeWithContext(context, () => unwrapped.apply(this, args));
+            const executionContext = markFunctionStart(functionName, overrideConfig);
+            const result: unknown = executeWithContext(executionContext, () =>
+                unwrapped.apply(this, args)
+            );
+            let success = true;
             if (result instanceof Promise) {
                 let returnValue: unknown;
                 return result
@@ -49,23 +60,26 @@ function instrumentFunctionPriv(overrideConfig?: InstrumentConfig) {
                         return value;
                     })
                     .catch((err) => {
-                        markFunctionException(context, err);
+                        markFunctionException(executionContext, definitionContext, err);
+                        success = false;
+                        return Promise.reject(err);
                     })
                     .finally(() => {
-                        markFunctionEnd(context, returnValue);
+                        markFunctionEnd(executionContext, definitionContext, returnValue, success);
                     });
             } else {
                 try {
                     return result;
                 } catch (err) {
-                    markFunctionException(context, err);
+                    markFunctionException(executionContext, definitionContext, err);
+                    success = false;
                     throw err;
                 } finally {
-                    markFunctionEnd(context, result);
+                    markFunctionEnd(executionContext, definitionContext, result, success);
                 }
             }
         };
-        descriptor[GLOBAL_WRAPPED_KEY] = true;
+        descriptor[WRAPPED_KEY] = true;
     };
 }
 
@@ -73,23 +87,29 @@ function instrumentAsyncFunctionPriv(overrideConfig?: InstrumentConfig) {
     return (_target: unknown, functionName: string, descriptor: AsyncFunctionDescriptor): void => {
         const unwrapped = descriptor.value!;
         // Avoid wrapping the function more than once
-        if (descriptor[GLOBAL_WRAPPED_KEY]) {
+        if (descriptor[WRAPPED_KEY]) {
             return;
         }
+        // Initialize the metrics
+        const definitionContext = initializeDefinitionContext(functionName, overrideConfig);
+        descriptor[DEFINITION_KEY] = definitionContext;
+        // Wrap the method
         descriptor.value = async function (...args: unknown[]) {
             const context = markFunctionStart(functionName, overrideConfig);
             let result;
+            let success = true;
             try {
                 result = await executeWithContext(context, () => unwrapped.apply(this, args));
                 return result;
             } catch (err) {
-                markFunctionException(context, err);
+                markFunctionException(context, definitionContext, err);
+                success = false;
                 throw err;
             } finally {
-                markFunctionEnd(context, result);
+                markFunctionEnd(context, definitionContext, result, success);
             }
         };
-        descriptor[GLOBAL_WRAPPED_KEY] = true;
+        descriptor[WRAPPED_KEY] = true;
     };
 }
 

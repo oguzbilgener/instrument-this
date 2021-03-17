@@ -22,11 +22,12 @@
         "lint:tests": "eslint --ext .ts --ext .tsx test"
     },
     "dependencies": {
+        "@koa/router": "^10.0.0",
         "@opentelemetry/api": "^0.18.0",
+        "@opentelemetry/api-metrics": "^0.18.0",
         "@opentelemetry/core": "^0.18.0",
         "@opentelemetry/exporter-collector": "^0.18.0",
-        "@opentelemetry/exporter-collector-grpc": "^0.18.0",
-        "@opentelemetry/exporter-collector-proto": "^0.18.0",
+        "@opentelemetry/exporter-prometheus": "^0.18.0",
         "@opentelemetry/instrumentation-http": "^0.18.0",
         "@opentelemetry/metrics": "^0.18.0",
         "@opentelemetry/node": "^0.18.0",
@@ -34,8 +35,7 @@
         "@types/koa": "^2.13.1",
         "@types/koa__router": "^8.0.4",
         "instrument-this": "file:///../",
-        "koa": "^2.13.1",
-        "@koa/router": "^10.0.0"
+        "koa": "^2.13.1"
     },
     "devDependencies": {
         "@types/node": "^14.14.35",

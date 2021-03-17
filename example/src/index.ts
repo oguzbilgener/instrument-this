@@ -1,9 +1,20 @@
+import {
+    initTracing,
+    initMetrics,
+    MeterProvider,
+    TracerProvider,
+    MetricsHandler,
+} from './opentelemetry.js';
+// Initialize OpenTelemetry, enable the HTTP instrumentation and the Otel collector exporter
+// Do this before requiring http (or koa) so that it can be patched.
+const tracerProvider = initTracing();
+const [metricsProvider, metricsHandler] = initMetrics();
+// Initialize instrumentation config to set log levels, argument names allowed to log etc.
+initInstrumentation(tracerProvider, metricsProvider);
 import { Instrument, initialize } from 'instrument-this';
 import Koa, { Context, Next } from 'koa';
 import KoaRouter from '@koa/router';
-import { initOpentelemetry } from './opentelemetry.js';
 import { ItemService, FirstService, SecondService } from './services.js';
-import { NodeTracerProvider } from '@opentelemetry/node';
 
 interface InjectionContext {
     itemService: ItemService;
@@ -11,7 +22,8 @@ interface InjectionContext {
     secondService: SecondService;
 }
 
-const PORT = 8000;
+const PORT = 8080;
+// TODO: consider adding a name prefix option to the class decorator
 class Router {
     private router: KoaRouter;
     private injectionContext: InjectionContext;
@@ -34,11 +46,6 @@ class Router {
 }
 
 async function main() {
-    // Initialize OpenTelemetry, enable the HTTP instrumentation and the Otel collector exporter
-    const provider = initOpentelemetry();
-    // Initialize instrumentation config to set log levels, argument names allowed to log etc.
-    initInstrumentation(provider);
-
     const firstService = new FirstService();
     const secondService = new SecondService();
     const injectionContext: InjectionContext = {
@@ -50,6 +57,7 @@ async function main() {
     const app = new Koa();
     app.use(errorHandlerMiddleware);
     const router = new Router(injectionContext);
+    app.use(makeMetricsRouter(metricsHandler).routes());
     app.use(router.routes());
 
     app.listen(PORT, () => {
@@ -57,9 +65,11 @@ async function main() {
     });
 }
 
-function initInstrumentation(provider: NodeTracerProvider) {
+function initInstrumentation(tracerProvider: TracerProvider, metricsProvider: MeterProvider) {
     initialize({
-        tracer: provider.getTracer('example'),
+        tracer: tracerProvider.getTracer('example'),
+        meter: metricsProvider.getMeter('example'),
+        config: {},
     });
 }
 
@@ -80,4 +90,12 @@ async function errorHandlerMiddleware(ctx: Context, next: Next) {
             message: err.message,
         };
     }
+}
+
+function makeMetricsRouter(handler: MetricsHandler): KoaRouter {
+    const router = new KoaRouter();
+    router.get('/metrics', (ctx: Context) => {
+        handler(ctx.req, ctx.res);
+    });
+    return router;
 }

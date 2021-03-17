@@ -1,9 +1,8 @@
 import { DEFAULT_INSTRUMENTATION, Instrumentation } from './instrumentation.js';
 
-// export const GLOBAL_CONFIG_KEY = Symbol.for('instrument-this.global.config');
-
 /** Symbol to mark wrapped functions with */
-export const GLOBAL_WRAPPED_KEY = Symbol.for('instrument-this.global.wrapped');
+export const WRAPPED_KEY = Symbol.for('instrument-this.wrapped');
+export const DEFINITION_KEY = Symbol.for('instrument-this.definition');
 
 let _globalInstrumentation: Instrumentation = DEFAULT_INSTRUMENTATION;
 

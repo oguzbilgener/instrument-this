@@ -48,6 +48,8 @@ services:
     restart: unless-stopped
     expose:
       - 9090
+    ports:
+      - 9090:9090
     networks:
       - instrument-this
     labels:
@@ -65,6 +67,8 @@ services:
     restart: unless-stopped
     expose:
       - 3000
+    ports:
+      - 3000:3000
     networks:
       - instrument-this
     labels:
