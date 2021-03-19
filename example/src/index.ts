@@ -1,21 +1,9 @@
-import {
-    initTracing,
-    initMetrics,
-    MeterProvider,
-    TracerProvider,
-    MetricsHandler,
-} from './opentelemetry.js';
-// Initialize OpenTelemetry, enable the HTTP instrumentation and the Otel collector exporter
-// Do this before requiring http (or koa) so that it can be patched.
-const tracerProvider = initTracing();
-const [metricsProvider, metricsHandler] = initMetrics();
-// Initialize instrumentation config to set log levels, argument names allowed to log etc.
-initInstrumentation(tracerProvider, metricsProvider);
-import { Instrument, initialize } from 'instrument-this';
+import { initTracing, initMetrics, TracerProvider } from './opentelemetry.js';
+import { Instrument, initialize, PromMetricsProvider } from 'instrument-this';
+import * as promClient from 'prom-client';
 import Koa, { Context, Next } from 'koa';
 import KoaRouter from '@koa/router';
 import { ItemService, FirstService, SecondService } from './services.js';
-
 interface InjectionContext {
     itemService: ItemService;
     firstService: FirstService;
@@ -31,13 +19,21 @@ class Router {
     constructor(injectionContext: InjectionContext) {
         this.injectionContext = injectionContext;
         this.router = new KoaRouter();
-        this.router.get('/', (ctx) => this.getItems(ctx));
+        this.router.get('/', (ctx) => this.getItemsRoute(ctx));
+        this.router.get('/other', (ctx) => this.getOtherRoute(ctx));
     }
 
     @Instrument()
-    async getItems(ctx: Context) {
+    async getItemsRoute(ctx: Context) {
         const mustFail = ctx.request.query.mustFail === 'true';
         ctx.body = await this.injectionContext.itemService.getItems(mustFail);
+    }
+
+    @Instrument()
+    async getOtherRoute(ctx: Context) {
+        await this.injectionContext.firstService.doThat();
+        await this.injectionContext.secondService.doOtherThing();
+        ctx.body = {};
     }
 
     routes() {
@@ -46,6 +42,14 @@ class Router {
 }
 
 async function main() {
+    // Initialize OpenTelemetry, enable the HTTP instrumentation and the Otel collector exporter
+    // TODO: Do this before requiring http (or koa) so that it can be patched.
+    // must use the `require` syntax
+    const tracerProvider = initTracing();
+    const promMetricsProvider = new PromMetricsProvider();
+    // const [metricsProvider, _metricsHandler] = initMetrics();
+    // Initialize instrumentation config to set log levels, argument names allowed to log etc.
+    initInstrumentation(tracerProvider, promMetricsProvider);
     const firstService = new FirstService();
     const secondService = new SecondService();
     const injectionContext: InjectionContext = {
@@ -57,7 +61,7 @@ async function main() {
     const app = new Koa();
     app.use(errorHandlerMiddleware);
     const router = new Router(injectionContext);
-    app.use(makeMetricsRouter(metricsHandler).routes());
+    app.use(makeMetricsRouter(promMetricsProvider).routes());
     app.use(router.routes());
 
     app.listen(PORT, () => {
@@ -65,10 +69,14 @@ async function main() {
     });
 }
 
-function initInstrumentation(tracerProvider: TracerProvider, metricsProvider: MeterProvider) {
+function initInstrumentation(
+    tracerProvider: TracerProvider,
+    promMetricsProvider: PromMetricsProvider
+) {
     initialize({
+        processName: 'example',
         tracer: tracerProvider.getTracer('example'),
-        meter: metricsProvider.getMeter('example'),
+        metricsProvider: promMetricsProvider,
         config: {},
     });
 }
@@ -92,10 +100,12 @@ async function errorHandlerMiddleware(ctx: Context, next: Next) {
     }
 }
 
-function makeMetricsRouter(handler: MetricsHandler): KoaRouter {
+function makeMetricsRouter(provider: PromMetricsProvider): KoaRouter {
+    // promClient.collectDefaultMetrics({});
     const router = new KoaRouter();
-    router.get('/metrics', (ctx: Context) => {
-        handler(ctx.req, ctx.res);
+    router.get('/metrics', async (ctx: Context) => {
+        ctx.type = 'text';
+        ctx.body = await provider.getRegistry().metrics();
     });
     return router;
 }

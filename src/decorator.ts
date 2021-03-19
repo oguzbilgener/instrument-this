@@ -6,7 +6,7 @@ import {
     markFunctionException,
     markFunctionEnd,
     DefinitionContext,
-    initializeDefinitionContext,
+    lazyInitializeDefinitionContext,
 } from './instrumentation.js';
 
 type AsyncFunction = (...args: any[]) => Promise<any>;
@@ -20,7 +20,7 @@ type DescriptorExtension = {
 type AsyncFunctionDescriptor = TypedPropertyDescriptor<AsyncFunction> & DescriptorExtension;
 type SyncFunctionDescriptor = TypedPropertyDescriptor<SyncFunction> & DescriptorExtension;
 
-type FunctionDescriptor = SyncFunctionDescriptor | AsyncFunctionDescriptor;
+export type FunctionDescriptor = SyncFunctionDescriptor | AsyncFunctionDescriptor;
 
 function isAsyncFunctionDescriptor(
     descriptor: FunctionDescriptor
@@ -41,12 +41,13 @@ function instrumentFunctionPriv(overrideConfig?: InstrumentConfig) {
             return instrumentAsyncFunctionPriv(overrideConfig)(target, functionName, descriptor);
         }
         const unwrapped = descriptor.value;
-        // Initialize the metrics
-        const definitionContext = initializeDefinitionContext(functionName, overrideConfig);
-
-        descriptor[DEFINITION_KEY] = definitionContext;
         // Wrap the method
         descriptor.value = function (...args: unknown[]) {
+            const definitionContext = lazyInitializeDefinitionContext(
+                descriptor,
+                functionName,
+                overrideConfig
+            );
             const executionContext = markFunctionStart(functionName, overrideConfig);
             const result: unknown = executeWithContext(executionContext, () =>
                 unwrapped.apply(this, args)
@@ -90,11 +91,13 @@ function instrumentAsyncFunctionPriv(overrideConfig?: InstrumentConfig) {
         if (descriptor[WRAPPED_KEY]) {
             return;
         }
-        // Initialize the metrics
-        const definitionContext = initializeDefinitionContext(functionName, overrideConfig);
-        descriptor[DEFINITION_KEY] = definitionContext;
         // Wrap the method
         descriptor.value = async function (...args: unknown[]) {
+            const definitionContext = lazyInitializeDefinitionContext(
+                descriptor,
+                functionName,
+                overrideConfig
+            );
             const context = markFunctionStart(functionName, overrideConfig);
             let result;
             let success = true;

@@ -34,12 +34,12 @@ export class ItemService {
 export class FirstService {
     @Instrument()
     async doThis() {
-        await delayRandom(25, 50);
+        await delayRandom(25, 250);
     }
 
     @Instrument()
     async doThat(mustFail?: boolean) {
-        await delayRandom(25, 50);
+        await delayRandom(1, 99);
         if (mustFail) {
             throw new Error('Something went wrong');
         }
@@ -60,7 +60,12 @@ export class SecondService {
 
     @Instrument()
     async doConcurrentTwo() {
-        await delayRandom(10, 20);
+        await delayRandom(4, 50);
+    }
+
+    @Instrument()
+    async doOtherThing() {
+        await delayRandom(120, 240);
     }
 }
 
