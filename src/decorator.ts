@@ -123,3 +123,17 @@ export function Instrument(overrideConfig?: InstrumentConfig) {
 export function InstrumentAsync(overrideConfig?: InstrumentConfig) {
     return instrumentAsyncFunctionPriv(overrideConfig);
 }
+
+
+export function wrapInstrument<T, F extends (...args: any[]) => T>(
+    fn: F,
+    overrideConfig?: InstrumentConfig
+): F {
+    return ((...args: any[]) => {
+        const descriptor = {
+            value: fn,
+        };
+        instrumentFunctionPriv(overrideConfig)(null, fn.name, descriptor);
+        return descriptor.value(...args);
+    }) as any;
+}
