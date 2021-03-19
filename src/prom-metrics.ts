@@ -3,13 +3,27 @@ import * as promClient from 'prom-client';
 
 export class PromMetricsProvider implements MetricsProvider {
     private registry: promClient.Registry;
+    private counters: { [name: string]: promClient.Counter<string> };
+    private summaries: { [name: string]: promClient.Summary<string> };
+    private histograms: { [name: string]: promClient.Histogram<string> };
 
     constructor() {
         this.registry = new promClient.Registry();
+        this.counters = {};
+        this.summaries = {};
+        this.histograms = {};
     }
 
     createCounter(name: string, description: string | undefined, labels: Labels): Counter {
-        return new PromCounter(name, description || '', labels, this.registry);
+        if (!this.counters[name]) {
+            this.counters[name] = new promClient.Counter({
+                name,
+                help: description || '',
+                labelNames: Object.keys(labels),
+            });
+            this.registry.registerMetric(this.counters[name]);
+        }
+        return new PromCounter(this.counters[name], labels)
     }
     createHistogram(
         name: string,
@@ -17,7 +31,19 @@ export class PromMetricsProvider implements MetricsProvider {
         buckets: number[],
         labels: Labels
     ): Histogram {
-        return new PromHistogram(name, description || '', buckets, labels, this.registry);
+        if (!this.histograms[name]) {
+            this.histograms[name] = new promClient.Histogram({
+                name,
+                help: description || '',
+                labelNames: Object.keys(labels),
+                buckets,
+            });
+            this.registry.registerMetric(this.histograms[name]);
+        }
+        return new PromHistogram(
+            this.histograms[name],
+            labels,
+        );
     }
     createSummary(
         name: string,
@@ -25,7 +51,18 @@ export class PromMetricsProvider implements MetricsProvider {
         quantiles: number[],
         labels: Labels
     ): Summary {
-        return new PromSummary(name, description || '', quantiles, labels, this.registry);
+        if (!this.summaries[name]) {
+            this.summaries[name] = new promClient.Summary({
+                name,
+                help: description || '',
+                labelNames: Object.keys(labels),
+                percentiles: quantiles,
+                maxAgeSeconds: 600,
+                ageBuckets: 5,
+            })
+            this.registry.registerMetric(this.summaries[name]);
+        }
+        return new PromSummary(this.summaries[name], labels);
     }
 
     getRegistry() {
@@ -38,19 +75,13 @@ export class PromCounter implements Counter {
     private counter: promClient.Counter<string>;
     private labels: Labels;
 
-    constructor(name: string, help: string, labels: Labels, registry: promClient.Registry) {
+    constructor(counter: promClient.Counter<string>, labels: Labels) {
         this.labels = labels;
-        this.counter = new promClient.Counter({
-            name,
-            help,
-            labelNames: Object.keys(labels),
-        });
-        registry.registerMetric(this.counter);
+        this.counter = counter;
     }
 
     increment(): void {
         this.counter.labels(this.labels).inc(1);
-        // this.counter.inc(1);
     }
 }
 
@@ -59,20 +90,11 @@ export class PromHistogram implements Histogram {
     private labels: Labels;
 
     constructor(
-        name: string,
-        help: string,
-        buckets: number[],
+        histogram: promClient.Histogram<string>,
         labels: Labels,
-        registry: promClient.Registry
     ) {
+        this.histogram = histogram;
         this.labels = labels;
-        this.histogram = new promClient.Histogram({
-            name,
-            help,
-            labelNames: Object.keys(labels),
-            buckets,
-        });
-        registry.registerMetric(this.histogram);
     }
 
     record(seconds: number): void {
@@ -85,22 +107,11 @@ export class PromSummary implements Summary {
     private labels: Labels;
 
     constructor(
-        name: string,
-        help: string,
-        percentiles: number[],
+        summary: promClient.Summary<string>,
         labels: Labels,
-        registry: promClient.Registry
     ) {
+        this.summary = summary;
         this.labels = labels;
-        this.summary = new promClient.Summary({
-            name,
-            help,
-            labelNames: Object.keys(labels),
-            percentiles,
-            maxAgeSeconds: 600,
-            ageBuckets: 5,
-        });
-        registry.registerMetric(this.summary);
     }
 
     record(value: number): void {

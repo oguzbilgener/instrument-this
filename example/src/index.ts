@@ -1,6 +1,5 @@
 import { initTracing, initMetrics, TracerProvider } from './opentelemetry.js';
 import { Instrument, initialize, PromMetricsProvider, wrapInstrument } from 'instrument-this';
-// import * as promClient from 'prom-client';
 import Koa, { Context, Next } from 'koa';
 import KoaRouter from '@koa/router';
 import { ItemService, FirstService, SecondService } from './services.js';
@@ -11,7 +10,6 @@ interface InjectionContext {
 }
 
 const PORT = 8080;
-// TODO: consider adding a name prefix option to the class decorator
 class Router {
     private router: KoaRouter;
     private injectionContext: InjectionContext;
@@ -42,13 +40,8 @@ class Router {
 }
 
 async function main() {
-    // Initialize OpenTelemetry, enable the HTTP instrumentation and the Otel collector exporter
-    // TODO: Do this before requiring http (or koa) so that it can be patched.
-    // must use the `require` syntax
     const tracerProvider = initTracing();
     const promMetricsProvider = new PromMetricsProvider();
-    // const [metricsProvider, _metricsHandler] = initMetrics();
-    // Initialize instrumentation config to set log levels, argument names allowed to log etc.
     initInstrumentation(tracerProvider, promMetricsProvider);
     const firstService = new FirstService();
     const secondService = new SecondService();
@@ -101,7 +94,6 @@ async function errorHandlerMiddleware(ctx: Context, next: Next) {
 }
 
 function makeMetricsRouter(provider: PromMetricsProvider): KoaRouter {
-    // promClient.collectDefaultMetrics({});
     const router = new KoaRouter();
     router.get('/metrics', async (ctx: Context) => {
         ctx.type = 'text';

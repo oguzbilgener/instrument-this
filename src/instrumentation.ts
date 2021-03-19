@@ -142,19 +142,19 @@ function initializeMetrics<L extends LogLevels>(
     };
     return {
         histogram: metrics.createHistogram(
-            `operation_histogram_${name}`,
+            `operation_histogram`,
             'Duration histogram',
             overrideMetrics?.histogram?.buckets || config.metrics.histogram.buckets,
-            labels
+            labels,
         ),
         summary: metrics.createSummary(
-            `operation_summary_${name}`,
+            `operation_summary`,
             'Duration summary',
             overrideMetrics?.summary?.quantiles || config.metrics.summary.quantiles,
-            labels
+            labels,
         ),
-        success: metrics.createCounter(`operation_success_${name}`, 'Success count', labels),
-        error: metrics.createCounter(`operation_error_${name}`, 'Error count', labels),
+        success: metrics.createCounter(`operation_success`, 'Success count', labels),
+        error: metrics.createCounter(`operation_error`, 'Error count', labels),
     };
 }
 

@@ -63,7 +63,7 @@ export class SecondService {
         await delayRandom(4, 50);
     }
 
-    @Instrument({ metrics: { histogram: { buckets: [0.1, 0.2, 0.3] } } })
+    @Instrument()
     async doOtherThing() {
         await delayRandom(120, 240);
     }

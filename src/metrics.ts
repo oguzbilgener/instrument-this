@@ -31,7 +31,11 @@ export type Labels = {
 };
 
 export class NoopMetricsProvider implements MetricsProvider {
-    createCounter(_name: string, _description: string | undefined, _labels: Labels): Counter {
+    createCounter(
+        _name: string,
+        _description: string | undefined,
+        _labels: Labels,
+    ): Counter {
         return new NoopCounter();
     }
     createHistogram(
