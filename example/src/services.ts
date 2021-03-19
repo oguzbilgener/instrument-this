@@ -1,4 +1,4 @@
-import { Instrument } from 'instrument-this';
+import { Instrument, wrapInstrument } from 'instrument-this';
 
 interface Item {
     value: number;
@@ -25,6 +25,7 @@ export class ItemService {
         }));
     }
 
+    // Do not create metrics for this method
     @Instrument({ name: 'secretSauce', metrics: { enabled: false } })
     private _getBase() {
         return 50 + Math.floor(Math.random() * 50);
@@ -46,6 +47,7 @@ export class FirstService {
         return this._getItemCount();
     }
 
+    // Do not create a span for this method
     @Instrument({ name: 'calculateItemCount', tracing: { enabled: false } })
     private _getItemCount() {
         return 1 + Math.floor(Math.random() * 10);
@@ -58,11 +60,12 @@ export class SecondService {
         await delayRandom(4, 8);
     }
 
-    @Instrument()
-    async doConcurrentTwo() {
+    // Fallback
+    doConcurrentTwo = wrapInstrument(async () => {
         await delayRandom(4, 50);
-    }
+    });
 
+    // Custom buckets
     @Instrument({ metrics: { histogram: { buckets: [0.1, 0.2, 0.3] } } })
     async doOtherThing() {
         await delayRandom(120, 240);

@@ -9,27 +9,27 @@ import {
     lazyInitializeDefinitionContext,
 } from './instrumentation.js';
 
-type AsyncFunction = (...args: any[]) => Promise<any>;
-type SyncFunction = (...args: any[]) => any;
+type AsyncFunction<T> = (...args: any[]) => Promise<T>;
+type SyncFunction<T> = (...args: any[]) => T;
 
 type DescriptorExtension = {
     [WRAPPED_KEY]?: boolean;
     [DEFINITION_KEY]?: DefinitionContext;
 };
 
-type AsyncFunctionDescriptor = TypedPropertyDescriptor<AsyncFunction> & DescriptorExtension;
-type SyncFunctionDescriptor = TypedPropertyDescriptor<SyncFunction> & DescriptorExtension;
+type AsyncFunctionDescriptor<T> = TypedPropertyDescriptor<AsyncFunction<T>> & DescriptorExtension;
+type SyncFunctionDescriptor<T> = TypedPropertyDescriptor<SyncFunction<T>> & DescriptorExtension;
 
-export type FunctionDescriptor = SyncFunctionDescriptor | AsyncFunctionDescriptor;
+export type FunctionDescriptor<T> = SyncFunctionDescriptor<T> | AsyncFunctionDescriptor<T>;
 
-function isAsyncFunctionDescriptor(
-    descriptor: FunctionDescriptor
-): descriptor is AsyncFunctionDescriptor {
+function isAsyncFunctionDescriptor<T>(
+    descriptor: FunctionDescriptor<T>
+): descriptor is AsyncFunctionDescriptor<T> {
     return descriptor.value?.constructor.name === 'AsyncFunction';
 }
 
 function instrumentFunctionPriv(overrideConfig?: InstrumentConfig) {
-    return (target: unknown, functionName: string, descriptor: FunctionDescriptor): void => {
+    return <T>(target: unknown, functionName: string, descriptor: FunctionDescriptor<T>): void => {
         if (descriptor.value === undefined) {
             return;
         }
@@ -85,7 +85,11 @@ function instrumentFunctionPriv(overrideConfig?: InstrumentConfig) {
 }
 
 function instrumentAsyncFunctionPriv(overrideConfig?: InstrumentConfig) {
-    return (_target: unknown, functionName: string, descriptor: AsyncFunctionDescriptor): void => {
+    return <T>(
+        _target: unknown,
+        functionName: string,
+        descriptor: AsyncFunctionDescriptor<T>
+    ): void => {
         const unwrapped = descriptor.value!;
         // Avoid wrapping the function more than once
         if (descriptor[WRAPPED_KEY]) {
@@ -122,4 +126,13 @@ export function Instrument(overrideConfig?: InstrumentConfig) {
 
 export function InstrumentAsync(overrideConfig?: InstrumentConfig) {
     return instrumentAsyncFunctionPriv(overrideConfig);
+}
+
+export function wrapInstrument<T>(
+    fn: SyncFunction<T> | AsyncFunction<T>,
+    overrideConfig?: InstrumentConfig
+): T extends Promise<infer I> ? Promise<T> : T {
+    return instrumentFunctionPriv(overrideConfig)(null, fn.name, {
+        value: fn,
+    });
 }
