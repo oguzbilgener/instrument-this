@@ -9,7 +9,6 @@ export interface MetricsConfig {
     enabled: boolean;
     labels?: Labels;
     summary: {
-        enabled: boolean;
         quantiles: number[];
     };
     histogram: {
@@ -34,13 +33,15 @@ export interface GlobalConfig<L extends LogLevels> {
 export interface InstrumentConfig {
     /** Override this operation name, if the given function/method is anonymous or has an undesirable name */
     name?: string;
-    tracing?: TracingConfig;
-    metrics?: MetricsConfig;
-    logging?: {
-        enabled?: boolean;
-        level: string;
-        logArgs?: boolean;
-    };
+    tracing?: false | Partial<TracingConfig>;
+    metrics?: false | Partial<MetricsConfig>;
+    logging?:
+        | false
+        | {
+              enabled?: boolean;
+              level: string;
+              logArgs?: boolean;
+          };
 }
 
 export type MergedConfig<L extends LogLevels> = {

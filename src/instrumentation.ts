@@ -59,7 +59,9 @@ export function markFunctionStart(
     const { tracer, config } = getInstrumentation();
     // TODO: log if log level is enough
     const name = overrideConfig?.name ?? functionName;
-    const tracingEnabled = overrideConfig?.tracing?.enabled ?? config.tracing.enabled;
+    const tracingEnabled =
+        overrideConfig?.tracing !== false &&
+        (overrideConfig?.tracing?.enabled ?? config.tracing.enabled);
     const span = tracingEnabled ? tracer.startSpan(name) : undefined;
     const startTime = process.hrtime();
     return {
@@ -124,26 +126,31 @@ function initializeMetrics<L extends LogLevels>(
     config: GlobalConfig<L>,
     overrideConfig: InstrumentConfig | undefined
 ): Metrics {
-    if (!config.metrics.enabled && !overrideConfig?.metrics?.enabled) {
+    if (
+        overrideConfig?.metrics === false ||
+        overrideConfig?.metrics?.enabled === false ||
+        !config.metrics.enabled
+    ) {
         return {};
     }
+    const overrideMetrics = overrideConfig?.metrics || undefined;
     const labels = {
         processName,
         name,
         ...config.metrics.labels,
-        ...overrideConfig?.metrics?.labels,
+        ...(overrideMetrics ? overrideMetrics?.labels : {}),
     };
     return {
         histogram: metrics.createHistogram(
             `operation_histogram_${name}`,
             'Duration histogram',
-            overrideConfig?.metrics?.histogram.buckets || config.metrics.histogram.buckets,
+            overrideMetrics?.histogram?.buckets || config.metrics.histogram.buckets,
             labels
         ),
         summary: metrics.createSummary(
             `operation_summary_${name}`,
             'Duration summary',
-            overrideConfig?.metrics?.summary.quantiles || config.metrics.summary.quantiles,
+            overrideMetrics?.summary?.quantiles || config.metrics.summary.quantiles,
             labels
         ),
         success: metrics.createCounter(`operation_success_${name}`, 'Success count', labels),

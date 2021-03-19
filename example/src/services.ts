@@ -25,7 +25,7 @@ export class ItemService {
         }));
     }
 
-    @Instrument({ name: 'secretSauce' })
+    @Instrument({ name: 'secretSauce', metrics: { enabled: false } })
     private _getBase() {
         return 50 + Math.floor(Math.random() * 50);
     }
@@ -46,7 +46,7 @@ export class FirstService {
         return this._getItemCount();
     }
 
-    @Instrument({ name: 'calculateItemCount' })
+    @Instrument({ name: 'calculateItemCount', tracing: { enabled: false } })
     private _getItemCount() {
         return 1 + Math.floor(Math.random() * 10);
     }
@@ -63,7 +63,7 @@ export class SecondService {
         await delayRandom(4, 50);
     }
 
-    @Instrument()
+    @Instrument({ metrics: { histogram: { buckets: [0.1, 0.2, 0.3] } } })
     async doOtherThing() {
         await delayRandom(120, 240);
     }
