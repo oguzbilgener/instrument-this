@@ -7,7 +7,7 @@ export interface InitializeParams<L extends LogLevels> {
     processName: string;
     tracer: Instrumentation<L>['tracer'];
     metricsProvider: Instrumentation<L>['metricsProvider'];
-    config: Partial<GlobalConfig<L>>;
+    config?: Partial<GlobalConfig<L>>;
 }
 
 /**
@@ -24,11 +24,11 @@ export function initialize<L extends LogLevels>(initializeParams: InitializePara
         config: {
             tracing: {
                 ...DEFAULT_CONFIG.tracing,
-                ...initializeParams.config.tracing,
+                ...(initializeParams.config || {}).tracing,
             },
             metrics: {
                 ...DEFAULT_CONFIG.metrics,
-                ...initializeParams.config.metrics,
+                ...(initializeParams.config || {}).metrics,
             },
             logging: {
                 ...((DEFAULT_CONFIG as unknown) as GlobalConfig<L>).logging,
