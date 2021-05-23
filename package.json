@@ -1,6 +1,6 @@
 {
     "name": "instrument-this",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Effortless OpenTelemetry instrumentation for Node.js",
     "main": "build/index.js",
     "type": "module",
