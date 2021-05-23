@@ -1,2 +1,9 @@
 example/
 assets/
+coverage/
+grafana/
+.eslintrc.js
+jest.config.js
+tsconfig.json
+.prettierrc.cjs
+*.code-workspace
