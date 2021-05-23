@@ -18,15 +18,13 @@ export type { TracerProvider, ApiMeterProvider as MeterProvider };
 export type MetricsHandler = (req: IncomingMessage, res: ServerResponse) => void;
 
 export function initTracing(): TracerProvider {
+    // default url is `http://otelcol:55681/v1/trace`
+    const url = process.env.OTLP_COLLECTOR_URL || undefined;
     const exporter = new CollectorTraceExporter({
         serviceName: 'example',
+        url,
     });
-    const tracerProvider = new NodeTracerProvider({
-        // Disable old plugins
-        plugins: {
-            http: { enabled: false, path: '@opentelemetry/plugin-http' },
-        } as any,
-    });
+    const tracerProvider = new NodeTracerProvider();
     const httpInstrumentation = new HttpInstrumentation({
         enabled: true,
         path: '@opentelemetry/instrumentation-http',

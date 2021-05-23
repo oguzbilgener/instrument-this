@@ -1,4 +1,4 @@
-import { initTracing, initMetrics, TracerProvider } from './opentelemetry.js';
+import { initTracing, TracerProvider } from './opentelemetry.js';
 import { Instrument, initialize, PromMetricsProvider, wrapInstrument } from 'instrument-this';
 import Koa, { Context, Next } from 'koa';
 import KoaRouter from '@koa/router';
@@ -28,11 +28,14 @@ class Router {
     }
 
     // Alternative method without TypeScript decorators
-    getOtherRoute = wrapInstrument(async (ctx: Context) => {
-        await this.injectionContext.firstService.doThat();
-        await this.injectionContext.secondService.doOtherThing();
-        ctx.body = {};
-    }, { name: 'getOtherRoute' })
+    getOtherRoute = wrapInstrument(
+        async (ctx: Context) => {
+            await this.injectionContext.firstService.doThat();
+            await this.injectionContext.secondService.doOtherThing();
+            ctx.body = {};
+        },
+        { name: 'getOtherRoute' }
+    );
 
     routes() {
         return this.router.routes();
