@@ -80,9 +80,6 @@ You can disable metrics creation while keeping the span, or vice versa:
 
 ```ts
 @Instrument({ metrics: { enabled: false } })
-```
-
-```ts
 @Instrument({ tracing: { enabled: false } })
 ```
 
@@ -100,7 +97,7 @@ router.get('/metrics', async (ctx: Context) => {
 
 ### Example
 
-An example project can be found in the `example` directory, with
+An example project can be found in the `example` directory.
 
 You can start up the whole stack with docker-compose:
 
@@ -110,8 +107,12 @@ docker-compose -f ./example/docker-compose.yml up --build
 
 This will build the example server image and start it up along with Jaeger, Prometheus and Grafana.
 
-Once it's up and running, you can make requests to http://localhost:8080/ and http://localhost:8080/
-
-A Grafana dashboard should be available at http://localhost:3000/d/.... (username: admin, password: admin).
+Once it's up and running, you can make requests to http://localhost:8080/ and http://localhost:8080/other
 
 The Jaeger UI should be available at localhost:16686, where you can explore the created spans:
+
+![jaeger](assets/jaeger1.png)
+
+Grafana should be available at http://localhost:3000 (username: admin, password: admin). Once you sign in, a dashboard called Example should be available to view.
+
+![grafana](assets/grafana.png)
